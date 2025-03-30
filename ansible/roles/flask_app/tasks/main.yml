@@ -1,0 +1,40 @@
+- name: Install Python packages
+  apt:
+    name: [ python3-pip, python3-venv ]
+    state: present
+    update_cache: yes
+
+- name: Create app directory
+  file:
+    path: /home/ubuntu/app
+    state: directory
+    owner: ubuntu
+
+- name: Copy Flask app
+  copy:
+    src: "{{ item }}"
+    dest: /home/ubuntu/app/
+  loop:
+    - app.py
+    - requirements.txt
+    - templates/
+    - init_db.js
+
+- name: Install requirements
+  pip:
+    requirements: /home/ubuntu/app/requirements.txt
+
+- name: Install Gunicorn
+  pip:
+    name: gunicorn
+
+- name: Create systemd service
+  template:
+    src: flaskapp.service.j2
+    dest: /etc/systemd/system/flaskapp.service
+
+- name: Enable Flask app service
+  systemd:
+    name: flaskapp
+    enabled: yes
+    state: started
