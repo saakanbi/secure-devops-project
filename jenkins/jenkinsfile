@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    environment {
+        ARTIFACT_NAME = "app.tar.gz"
+        HASH_FILE = "hash.txt"
+    }
+
+    stages {
+        stage('Checkout Source') {
+            steps {
+                git branch: 'dev', url: 'https://github.com/saakanbi/secure-devops-project.git'
+            }
+        }
+
+        stage('Package Flask App') {
+            steps {
+                sh '''
+                cd app
+                tar -czvf $ARTIFACT_NAME app.py requirements.txt templates/ init_db.js
+                sha256sum $ARTIFACT_NAME > $HASH_FILE
+                '''
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: "app/$ARTIFACT_NAME, app/$HASH_FILE", fingerprint: true
+            }
+        }
+
+        stage('Deploy with Ansible') {
+            steps {
+                sh '''
+                cd ansible
+                ansible-playbook -i inventory.ini site.yml
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment completed successfully!'
+        }
+        failure {
+            echo '❌ Deployment failed.'
+        }
+    }
+}
